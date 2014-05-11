@@ -1,0 +1,4 @@
+message RequestVoteResponse {
+    required uint64 term = 1;
+    required bool voteGranted = 2;
+}

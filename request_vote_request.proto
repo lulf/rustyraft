@@ -1,0 +1,6 @@
+message RequestVoteRequest {
+    required bytes term = 1;
+    required uint64 candidateId = 2;
+    required uint64 lastLogIndex = 3;
+    required uint64 lastLogTerm = 4;
+}
