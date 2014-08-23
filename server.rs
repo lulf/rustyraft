@@ -1,9 +1,12 @@
-use std::io::{Listener, Acceptor};
+use std::io::{Listener, Acceptor, IoResult, IoError, IoErrorKind, InvalidInput};
 use std::io::net::tcp::{TcpListener, TcpStream};
 use std::io::net::ip::{SocketAddr, Ipv4Addr};
 use std::io;
 use std::str;
 use std::ascii;
+use self::protocol::{RequestVoteRequest, AppendEntriesRequest, read_request_vote, read_append_entries};
+
+mod protocol;
 
 #[deriving(Clone)]
 #[deriving(Show)]
@@ -71,19 +74,43 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
 }
 
 fn handle_client(mut stream: TcpStream, mut state: &ServerState, others:Vec<ServerSpec>) {
+    let cmd = read_rpc_command(stream);
+    println!("Command {}", cmd);
+}
+
+#[deriving(Clone)]
+#[deriving(Show)]
+enum RpcRequest {
+    RequestVoteRequest,
+    AppendEntriesRequest
+}
+
+fn read_rpc_command(mut stream: TcpStream) -> IoResult<RpcRequest> {
     let input = stream.read_byte();
     static REQUEST_VOTE: u8 = '1' as u8;
     static APPEND_ENTRIES: u8 = '2' as u8;
     match input {
         Ok(REQUEST_VOTE) => {
-            println!("Got 1");
+            return read_request_vote(stream);
         }
         Ok(APPEND_ENTRIES) => {
-            println!("Got 2");
+            return read_append_entries(stream);
         }
         Ok(_) => {
-            println!("Get unknown command");
+            return Err(IoError {
+                kind: InvalidInput,
+                desc: "Unknown command",
+                detail: None
+            })
         }
-        Err(e) => { println!("Error reading from stream: {}", e); }
+        Err(e) => {
+            return Err(e)
+        }
+    }
+}
+
+
+fn handle_rpc_command(cmd: RpcRequest) {
+    match cmd {
     }
 }
