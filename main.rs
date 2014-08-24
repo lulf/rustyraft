@@ -12,15 +12,15 @@ mod server;
 fn main() {
     let args = os::args();
     if args.len() < 2 {
-        println!("Usage: {} <port...>", args[0]);
+        println!("Usage: {} <port...>", args.get(0));
         return;
     }
     let num_servers:uint = args.len() - 1;
     let mut servers:Vec<server::ServerSpec> = Vec::new();
     for i in range(1, num_servers + 1) {
-        let server_port:u16 = from_str(args[i]).unwrap();
+        let server_port:u16 = from_str(args.get(i).as_slice()).unwrap();
         let server_host = "localhost";
-        servers.push(server::ServerSpec{host: "localhost", port:server_port});
+        servers.push(server::ServerSpec::new("localhost", server_port));
     }
     for i in range(0, num_servers) {
         server::start_server(i, &servers);

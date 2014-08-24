@@ -4,15 +4,70 @@ use std::io::net::ip::{SocketAddr, Ipv4Addr};
 use std::io;
 use std::str;
 use std::ascii;
-use self::protocol::{RequestVoteRequest, AppendEntriesRequest, read_request_vote, read_append_entries};
 
-mod protocol;
+trait RpcRequest {
+   fn handle(&self, mut state: ServerState);
+}
+
+pub struct RequestVoteRequest {
+    term: uint,
+    candidateId: uint,
+    lastLogIndex: uint,
+    lastLogTerm: uint
+}
+
+pub struct AppendEntriesRequest {
+    term: uint,
+    leaderId: uint,
+    prevLogIndex: uint,
+    prevLogTerm: uint,
+    entries: Vec<Vec<u8>>,
+    leaderCommit: uint
+}
+
+impl RpcRequest for RequestVoteRequest {
+    fn handle(&self, mut state: ServerState) {
+    }
+}
+
+impl RpcRequest for AppendEntriesRequest {
+    fn handle(&self, mut state: ServerState) {
+    }
+}
+
+pub fn parseRequestVote(mut stream: TcpStream) -> IoResult<RequestVoteRequest> {
+    let ret =  RequestVoteRequest {
+        term: 0,
+        candidateId: 0,
+        lastLogIndex: 0,
+        lastLogTerm: 0
+    };
+    return Ok(ret);
+}
+
+pub fn parseAppendEntries(mut stream: TcpStream) -> IoResult<AppendEntriesRequest> {
+    let ret = AppendEntriesRequest {
+        term: 0,
+        leaderId: 0,
+        prevLogIndex: 0,
+        prevLogTerm: 0,
+        entries: Vec::new(),
+        leaderCommit: 0
+    };
+    return Ok(ret);
+}
 
 #[deriving(Clone)]
 #[deriving(Show)]
 pub struct ServerSpec {
     host: &'static str,
     port: u16
+}
+
+impl ServerSpec {
+    pub fn new(hostname: &'static str, port: u16) -> ServerSpec {
+        ServerSpec { host: hostname, port: port }
+    }
 }
 
 enum State {
@@ -53,10 +108,7 @@ pub fn start_server(serverId:uint, servers:&Vec<ServerSpec>) {
 }
 
 fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec>) {
-    let mut acceptor = TcpListener::bind(SocketAddr {
-                                        ip: Ipv4Addr(127, 0, 0, 1),
-                                        port: me.port
-                                     }).listen();
+    let mut acceptor = TcpListener::bind("127.0.0.1", me.port).listen();
     match acceptor {
         Err(e) => { println!("Error listening to {} ", me.port) }
         Ok(_) => {
@@ -75,26 +127,21 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
 
 fn handle_client(mut stream: TcpStream, mut state: &ServerState, others:Vec<ServerSpec>) {
     let cmd = read_rpc_command(stream);
-    println!("Command {}", cmd);
+    //println!("Command {}", cmd);
 }
 
-#[deriving(Clone)]
-#[deriving(Show)]
-enum RpcRequest {
-    RequestVoteRequest,
-    AppendEntriesRequest
-}
 
-fn read_rpc_command(mut stream: TcpStream) -> IoResult<RpcRequest> {
+
+fn read_rpc_command(mut stream: TcpStream) -> IoResult<Box<RpcRequest>> {
     let input = stream.read_byte();
     static REQUEST_VOTE: u8 = '1' as u8;
     static APPEND_ENTRIES: u8 = '2' as u8;
     match input {
         Ok(REQUEST_VOTE) => {
-            return read_request_vote(stream);
+            return parseRequestVote(stream).map(|ret| { box ret as Box<RpcRequest> });
         }
         Ok(APPEND_ENTRIES) => {
-            return read_append_entries(stream);
+            return parseAppendEntries(stream).map(|ret| { box ret as Box<RpcRequest> });
         }
         Ok(_) => {
             return Err(IoError {
@@ -106,11 +153,5 @@ fn read_rpc_command(mut stream: TcpStream) -> IoResult<RpcRequest> {
         Err(e) => {
             return Err(e)
         }
-    }
-}
-
-
-fn handle_rpc_command(cmd: RpcRequest) {
-    match cmd {
     }
 }
