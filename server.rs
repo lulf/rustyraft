@@ -4,6 +4,7 @@ use std::io::net::ip::{SocketAddr, Ipv4Addr};
 use std::io;
 use std::str;
 use std::ascii;
+
 trait RpcRequest { fn handle(&self, mut state: &ServerState);
 }
 
