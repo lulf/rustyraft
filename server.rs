@@ -4,9 +4,7 @@ use std::io::net::ip::{SocketAddr, Ipv4Addr};
 use std::io;
 use std::str;
 use std::ascii;
-
-trait RpcRequest {
-   fn handle(&self, mut state: ServerState);
+trait RpcRequest { fn handle(&self, mut state: &ServerState);
 }
 
 pub struct RequestVoteRequest {
@@ -26,12 +24,12 @@ pub struct AppendEntriesRequest {
 }
 
 impl RpcRequest for RequestVoteRequest {
-    fn handle(&self, mut state: ServerState) {
+    fn handle(&self, mut state: &ServerState) {
     }
 }
 
 impl RpcRequest for AppendEntriesRequest {
-    fn handle(&self, mut state: ServerState) {
+    fn handle(&self, mut state: &ServerState) {
     }
 }
 
@@ -127,6 +125,14 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
 
 fn handle_client(mut stream: TcpStream, mut state: &ServerState, others:Vec<ServerSpec>) {
     let cmd = read_rpc_command(stream);
+    match cmd {
+    	Ok(command) => {
+		command.handle(state);
+	}
+	Err(e) => {
+		println!("Error reading rpc command: {}", e);
+	}
+    }
     //println!("Command {}", cmd);
 }
 
