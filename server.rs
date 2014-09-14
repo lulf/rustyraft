@@ -5,7 +5,8 @@ use std::io;
 use std::str;
 use std::ascii;
 
-trait RpcRequest { fn handle(&self, mut state: &ServerState);
+trait RpcRequest {
+    fn handle(&self, mut state: &ServerState) -> Box<RpcResponse>;
 }
 
 pub struct RequestVoteRequest {
@@ -24,15 +25,53 @@ pub struct AppendEntriesRequest {
     leaderCommit: uint
 }
 
+trait RpcResponse {
+    fn send(&self, mut stream: &TcpStream) -> IoResult<()>;
+}
+
+pub struct RequestVoteResponse {
+    term: uint,
+    voteGranted: bool
+}
+
+pub struct AppendEntriesResponse {
+    term: uint,
+    success: bool
+}
+
+impl RpcResponse for RequestVoteResponse {
+    fn send(&self, mut stream: &TcpStream) -> IoResult<()> {
+        Ok(())
+    }
+}
+
+impl RpcResponse for AppendEntriesResponse {
+    fn send(&self, mut stream: &TcpStream) -> IoResult<()> {
+        Ok(())
+    }
+}
+
 impl RpcRequest for RequestVoteRequest {
-    fn handle(&self, mut state: &ServerState) {
+    fn handle(&self, mut state: &ServerState) -> Box<RpcResponse> {
+        let ret = RequestVoteResponse {
+            term: 0,
+            voteGranted: false
+        };
+        box ret as Box<RpcResponse>
     }
 }
 
 impl RpcRequest for AppendEntriesRequest {
-    fn handle(&self, mut state: &ServerState) {
+    fn handle(&self, mut state: &ServerState) -> Box<RpcResponse> {
+        let ret = AppendEntriesResponse {
+            term: 0,
+            success: false
+        };
+        box ret as Box<RpcResponse>
     }
 }
+
+
 
 pub fn parseRequestVote(mut stream: TcpStream) -> IoResult<RequestVoteRequest> {
     let ret =  RequestVoteRequest {
