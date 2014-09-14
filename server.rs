@@ -35,22 +35,35 @@ impl RpcRequest for AppendEntriesRequest {
 
 pub fn parseRequestVote(mut stream: TcpStream) -> IoResult<RequestVoteRequest> {
     let ret =  RequestVoteRequest {
-        term: 0,
-        candidateId: 0,
-        lastLogIndex: 0,
-        lastLogTerm: 0
+        term: try!(stream.read_le_uint()),
+        candidateId: try!(stream.read_le_uint()),
+        lastLogIndex: try!(stream.read_le_uint()),
+        lastLogTerm: try!(stream.read_le_uint())
     };
     return Ok(ret);
 }
 
 pub fn parseAppendEntries(mut stream: TcpStream) -> IoResult<AppendEntriesRequest> {
     let ret = AppendEntriesRequest {
-        term: 0,
-        leaderId: 0,
-        prevLogIndex: 0,
-        prevLogTerm: 0,
-        entries: Vec::new(),
-        leaderCommit: 0
+        term: try!(stream.read_le_uint()),
+        leaderId: try!(stream.read_le_uint()),
+        prevLogIndex: try!(stream.read_le_uint()),
+        prevLogTerm: try!(stream.read_le_uint()),
+        entries: {
+            let vec_length = try!(stream.read_le_uint());
+            let mut entries:Vec<Vec<u8>> = Vec::new();
+            // Perhaps this can be done simpler...
+            for entry in range(0, vec_length) {
+                let entry_length = try!(stream.read_le_uint());
+                let mut entry:Vec<u8> = Vec::new();
+                for c in range(0, entry_length) {
+                    entry.push(try!(stream.read_byte()));
+                }
+                entries.push(entry)
+            }
+            entries
+        },
+        leaderCommit: try!(stream.read_le_uint())
     };
     return Ok(ret);
 }
