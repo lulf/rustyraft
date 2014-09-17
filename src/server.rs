@@ -191,7 +191,7 @@ fn handle_client(mut stream: TcpStream, mut state: &ServerState, others:Vec<Serv
 
 
 
-fn read_rpc_command(mut stream: TcpStream) -> IoResult<Box<RpcRequest>> {
+fn read_rpc_command(mut stream: TcpStream) -> IoResult<Box<RpcRequest+'static>> {
     let input = stream.read_byte();
     static REQUEST_VOTE: u8 = '1' as u8;
     static APPEND_ENTRIES: u8 = '2' as u8;
