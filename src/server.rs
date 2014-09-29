@@ -41,6 +41,9 @@ pub struct AppendEntriesResponse {
 
 impl RpcResponse for RequestVoteResponse {
     fn send(&self, mut stream: &TcpStream) -> IoResult<()> {
+        if_ok!(stream.write_uint(term));
+        let success_char = if (success) { 1 } else { 0 };
+        if_ok!(stream.write_char(success_char))
         Ok(())
     }
 }
