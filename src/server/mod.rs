@@ -41,19 +41,17 @@ struct ServerState {
 }
 
 impl ServerState {
-    pub fn handleRequestVote(&self, request: RequestVoteRequest) {
-        let ret = RequestVoteResponse {
+    pub fn handleRequestVote(&self, request: RequestVoteRequest) -> RequestVoteResponse {
+        RequestVoteResponse {
             term: 0,
             voteGranted: false
-        };
-        //box ret as Box<RpcResponse>
+        }
     }
-    pub fn handleAppendEntries(&self, request: AppendEntriesRequest) {
-        let ret = AppendEntriesResponse {
+    pub fn handleAppendEntries(&self, request: AppendEntriesRequest) -> AppendEntriesResponse {
+        AppendEntriesResponse {
             term: 0,
             success: false
-        };
-        //box ret as Box<RpcResponse>
+        }
     }
 }
 
@@ -82,8 +80,8 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
         Ok(_) => {
             for stream in acceptor.incoming() {
                 match stream  {
-                    Err(e) => { println!("Error handling client connection!") }
-                    Ok(mut tcpStream) => handle_client(&mut tcpStream, state, others.clone())
+                    Err(e) => { println!("Error handling client connection!"); }
+                    Ok(mut tcpStream) => { handle_client(&mut tcpStream, state, others.clone()); }
                 }
             }
             drop(acceptor);
@@ -93,24 +91,22 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
     //}
 }
 
-fn handle_client(stream: &mut TcpStream, mut state: &ServerState, others:Vec<ServerSpec>) {
-    let input: IoResult<u8> = stream.read_byte();
+fn handle_client(stream: &mut TcpStream, mut state: &ServerState, others:Vec<ServerSpec>) -> IoResult<()> {
+    let input: u8 = try!(stream.read_byte());
     static REQUEST_VOTE: u8 = '1' as u8;
     static APPEND_ENTRIES: u8 = '2' as u8;
     match input {
-        Ok(REQUEST_VOTE) => {
-            let request: IoResult<RequestVoteRequest> = RpcRequest::decode(stream);
-            request.map(|req| { state.handleRequestVote(req); });
+        REQUEST_VOTE => {
+            let request: RequestVoteRequest = try!(RpcRequest::decode(stream));
+            let response = state.handleRequestVote(request);
         }
-        Ok(APPEND_ENTRIES) => {
-            let request: IoResult<AppendEntriesRequest> = RpcRequest::decode(stream);
-            request.map(|req| { state.handleAppendEntries(req); });
+        APPEND_ENTRIES => {
+            let request: AppendEntriesRequest = try!(RpcRequest::decode(stream));
+            let response = state.handleAppendEntries(request);
         }
-        Ok(_) => {
-            println!("Unknown command");
-        }
-        Err(e) => {
-            println!("Error reading: {}", e);
+        n => {
+            println!("Unknown command {}", n);
         }
     }
+    Ok(())
 }
