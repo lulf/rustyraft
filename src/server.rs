@@ -220,10 +220,12 @@ fn read_rpc_command(mut stream: TcpStream) -> IoResult<Box<RpcRequest+'static>> 
     static APPEND_ENTRIES: u8 = '2' as u8;
     match input {
         Ok(REQUEST_VOTE) => {
-            return RequestVoteRequest::decode(stream).map(|ret| { box ret as Box<RpcRequest> });
+            let request: IoResult<RequestVoteRequest> = RpcRequest::decode(stream);
+            return request.map(|ret| { box ret as Box<RpcRequest> });
         }
         Ok(APPEND_ENTRIES) => {
-            return AppendEntriesRequest::decode(stream).map(|ret| { box ret as Box<RpcRequest> });
+            let request: IoResult<AppendEntriesRequest> = RpcRequest::decode(stream);
+            return request.map(|ret| { box ret as Box<RpcRequest> });
         }
         Ok(_) => {
             return Err(IoError {
