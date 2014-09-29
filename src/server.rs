@@ -42,9 +42,12 @@ pub struct AppendEntriesResponse {
 
 impl RpcResponse for RequestVoteResponse {
     fn encode(&self, mut stream: &TcpStream) -> IoResult<()> {
-        try!(stream.write_uint(term));
-        let voteGranted_char = if (voteGranted) { 1 } else { 0 };
-        try!(stream.write_char(voteGranted_char))
+        try!(stream.write_le_uint(term));
+        if (voteGranted) {
+            try!(stream.write([1]));
+        } else {
+            try!(stream.write([0]));
+        }
         Ok(())
     }
     fn decode(&self, mut stream: &TcpStream) -> IoResult<()> {
@@ -54,9 +57,12 @@ impl RpcResponse for RequestVoteResponse {
 
 impl RpcResponse for AppendEntriesResponse {
     fn encode(&self, mut stream: &TcpStream) -> IoResult<()> {
-        try!(stream.write_uint(term));
-        let success_char = if (success) { 1 } else { 0 };
-        try!(stream.write_char(success_char))
+        try!(stream.write_le_uint(term));
+        if (success) {
+            try!(stream.write([1]));
+        } else {
+            try!(stream.write([0]));
+        }
         Ok(())
     }
     fn decode(&self, mut stream: &TcpStream) -> IoResult<()> {
