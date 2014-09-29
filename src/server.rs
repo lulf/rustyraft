@@ -7,7 +7,7 @@ use std::ascii;
 
 trait RpcRequest {
     fn handle(&self, mut state: &ServerState) -> Box<RpcResponse>;
-    fn decode(mut stream: &TcpStream) -> IoResult<Self>;
+    fn decode(stream: &mut TcpStream) -> IoResult<Self>;
 }
 
 pub struct RequestVoteRequest {
@@ -27,8 +27,8 @@ pub struct AppendEntriesRequest {
 }
 
 trait RpcResponse {
-    fn encode(&self, mut stream: &TcpStream) -> IoResult<()>;
-    fn decode(mut stream: &TcpStream) -> IoResult<Self>;
+    fn encode(&self, stream: &mut TcpStream) -> IoResult<()>;
+    fn decode(stream: &mut TcpStream) -> IoResult<Self>;
 }
 
 pub struct RequestVoteResponse {
@@ -42,7 +42,7 @@ pub struct AppendEntriesResponse {
 }
 
 impl RpcResponse for RequestVoteResponse {
-    fn encode(&self, mut stream: &TcpStream) -> IoResult<()> {
+    fn encode(&self, stream: &mut TcpStream) -> IoResult<()> {
         try!(stream.write_le_uint(self.term));
         if (self.voteGranted) {
             try!(stream.write([1]));
@@ -51,7 +51,7 @@ impl RpcResponse for RequestVoteResponse {
         }
         Ok(())
     }
-    fn decode(mut stream: &TcpStream) -> IoResult<RequestVoteResponse> {
+    fn decode(stream: &mut TcpStream) -> IoResult<RequestVoteResponse> {
         let term = try!(stream.read_le_uint());
         let b = try!(stream.read_byte());
         Ok(RequestVoteResponse {
@@ -61,7 +61,7 @@ impl RpcResponse for RequestVoteResponse {
 }
 
 impl RpcResponse for AppendEntriesResponse {
-    fn encode(&self, mut stream: &TcpStream) -> IoResult<()> {
+    fn encode(&self, stream: &mut TcpStream) -> IoResult<()> {
         try!(stream.write_le_uint(self.term));
         if (self.success) {
             try!(stream.write([1]));
@@ -70,7 +70,7 @@ impl RpcResponse for AppendEntriesResponse {
         }
         Ok(())
     }
-    fn decode(mut stream: &TcpStream) -> IoResult<AppendEntriesResponse> {
+    fn decode(stream: &mut TcpStream) -> IoResult<AppendEntriesResponse> {
         let term = try!(stream.read_le_uint());
         let b = try!(stream.read_byte());
         Ok(AppendEntriesResponse {
@@ -88,7 +88,7 @@ impl RpcRequest for RequestVoteRequest {
         };
         box ret as Box<RpcResponse>
     }
-    fn decode(mut stream: TcpStream) -> IoResult<RequestVoteRequest> {
+    fn decode(stream: &mut TcpStream) -> IoResult<RequestVoteRequest> {
         let ret =  RequestVoteRequest {
             term: try!(stream.read_le_uint()),
             candidateId: try!(stream.read_le_uint()),
@@ -107,7 +107,7 @@ impl RpcRequest for AppendEntriesRequest {
         };
         box ret as Box<RpcResponse>
     }
-    fn decode(mut stream: TcpStream) -> IoResult<AppendEntriesRequest> {
+    fn decode(stream: &mut TcpStream) -> IoResult<AppendEntriesRequest> {
         let ret = AppendEntriesRequest {
             term: try!(stream.read_le_uint()),
             leaderId: try!(stream.read_le_uint()),
@@ -189,9 +189,9 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
         Err(e) => { println!("Error listening to {} ", me.port) }
         Ok(_) => {
             for stream in acceptor.incoming() {
-                match stream {
+                match stream  {
                     Err(e) => { println!("Error handling client connection!") }
-                    Ok(stream) => handle_client(stream, state, others.clone())
+                    Ok(mut tcpStream) => handle_client(&mut tcpStream, state, others.clone())
                 }
             }
             drop(acceptor);
@@ -201,7 +201,7 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
     //}
 }
 
-fn handle_client(mut stream: TcpStream, mut state: &ServerState, others:Vec<ServerSpec>) {
+fn handle_client(stream: &mut TcpStream, mut state: &ServerState, others:Vec<ServerSpec>) {
     let cmd = read_rpc_command(stream);
     match cmd {
     	Ok(command) => {
@@ -214,7 +214,7 @@ fn handle_client(mut stream: TcpStream, mut state: &ServerState, others:Vec<Serv
     //println!("Command {}", cmd);
 }
 
-fn read_rpc_command(mut stream: TcpStream) -> IoResult<Box<RpcRequest+'static>> {
+fn read_rpc_command(stream: &mut TcpStream) -> IoResult<Box<RpcRequest+'static>> {
     let input = stream.read_byte();
     static REQUEST_VOTE: u8 = '1' as u8;
     static APPEND_ENTRIES: u8 = '2' as u8;
