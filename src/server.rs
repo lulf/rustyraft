@@ -53,7 +53,7 @@ impl RpcResponse for RequestVoteResponse {
     fn decode(&self, mut stream: &TcpStream) -> IoResult<()> {
         self.term = try!(stream.read_le_uint());
         let b = try!(stream.read_byte());
-        self.voteGranted = (b == 1)
+        self.voteGranted = (b == 1);
         Ok(())
     }
 }
