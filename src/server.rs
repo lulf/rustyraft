@@ -27,6 +27,7 @@ pub struct AppendEntriesRequest {
 
 trait RpcResponse {
     fn encode(&self, mut stream: &TcpStream) -> IoResult<()>;
+    fn decode(&self, mut stream: &TcpStream) -> IoResult<()>;
 }
 
 pub struct RequestVoteResponse {
@@ -46,6 +47,9 @@ impl RpcResponse for RequestVoteResponse {
         if_ok!(stream.write_char(voteGranted_char))
         Ok(())
     }
+    fn decode(&self, mut stream: &TcpStream) -> IoResult<()> {
+        Ok(())
+    }
 }
 
 impl RpcResponse for AppendEntriesResponse {
@@ -53,6 +57,9 @@ impl RpcResponse for AppendEntriesResponse {
         if_ok!(stream.write_uint(term));
         let success_char = if (success) { 1 } else { 0 };
         if_ok!(stream.write_char(success_char))
+        Ok(())
+    }
+    fn decode(&self, mut stream: &TcpStream) -> IoResult<()> {
         Ok(())
     }
 }
