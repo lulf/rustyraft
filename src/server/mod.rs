@@ -37,7 +37,28 @@ struct ServerState {
 
     nextIndex: Vec<uint>,
     matchIndex: Vec<uint>,
-    state: State
+    state: State,
+
+    me: ServerSpec,
+    peers: Vec<ServerSpec>
+}
+
+impl ServerState {
+    fn initial(me:ServerSpec, peers:Vec<ServerSpec>) -> ServerState {
+        let mut ret = ServerState {
+            currentTerm: 0,
+            votedFor: None,
+            log: Vec::new(),
+            commitIndex: 0,
+            lastApplied: 0,
+            nextIndex: Vec::new(),
+            matchIndex: Vec::new(),
+            state: Follower,
+            me: me,
+            peers: peers
+        };
+        ret
+    }
 }
 
 impl ServerState {
@@ -56,24 +77,16 @@ impl ServerState {
 }
 
 pub fn start_server(serverId:uint, servers:&Vec<ServerSpec>) {
-    let mut state:ServerState = ServerState {
-        currentTerm: 0,
-        votedFor: None,
-        log: Vec::new(),
-        commitIndex: 0,
-        lastApplied: 0,
-        nextIndex: Vec::new(),
-        matchIndex: Vec::new(),
-        state: Follower
-    };
     let mut others = servers.clone();
     let mySpec = others.remove(serverId).unwrap();
+    let mut state = ServerState::initial(mySpec, others);
     spawn(proc() {
-        run_raft_server(&state, mySpec, others);
+        run_raft_server(&state);
     });
 }
 
-fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec>) {
+fn run_raft_server(mut state: &ServerState) {
+    let me = &state.me;
     let mut acceptor = TcpListener::bind("127.0.0.1", me.port).listen();
     match acceptor {
         Err(e) => { println!("Error listening to {} ", me.port) }
@@ -82,7 +95,7 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
                 match stream {
                     Err(e) => { println!("Error handling client connection!"); }
                     Ok(mut tcpStream) => {
-                        let status = handle_client(&mut tcpStream, state, others.clone());
+                        let status = handle_client(&mut tcpStream, state);
                         match status {
                             Ok(_) => {}
                             Err(msg) => { println!("Encountered error: {}", msg); }
@@ -97,7 +110,7 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
     //}
 }
 
-fn handle_client(stream: &mut TcpStream, mut state: &ServerState, others:Vec<ServerSpec>) -> IoResult<()> {
+fn handle_client(stream: &mut TcpStream, mut state: &ServerState) -> IoResult<()> {
     let input: u8 = try!(stream.read_byte());
     static REQUEST_VOTE: u8 = '1' as u8;
     static APPEND_ENTRIES: u8 = '2' as u8;
