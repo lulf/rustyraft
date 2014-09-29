@@ -7,6 +7,7 @@ use std::ascii;
 
 trait RpcRequest {
     fn handle(&self, mut state: &ServerState) -> Box<RpcResponse>;
+    fn decode(mut stream: &TcpStream) -> IoResult<Self>;
 }
 
 pub struct RequestVoteRequest {
@@ -27,7 +28,7 @@ pub struct AppendEntriesRequest {
 
 trait RpcResponse {
     fn encode(&self, mut stream: &TcpStream) -> IoResult<()>;
-    fn decode(&self, mut stream: &TcpStream) -> IoResult<()>;
+    fn decode(mut stream: &TcpStream) -> IoResult<Self>;
 }
 
 pub struct RequestVoteResponse {
@@ -50,11 +51,12 @@ impl RpcResponse for RequestVoteResponse {
         }
         Ok(())
     }
-    fn decode(&self, mut stream: &TcpStream) -> IoResult<()> {
-        self.term = try!(stream.read_le_uint());
+    fn decode(mut stream: &TcpStream) -> IoResult<RequestVoteResponse> {
+        let term = try!(stream.read_le_uint());
         let b = try!(stream.read_byte());
-        self.voteGranted = (b == 1);
-        Ok(())
+        Ok(RequestVoteResponse {
+            term: term,
+            voteGranted: (b == 1)})
     }
 }
 
@@ -68,11 +70,13 @@ impl RpcResponse for AppendEntriesResponse {
         }
         Ok(())
     }
-    fn decode(&self, mut stream: &TcpStream) -> IoResult<()> {
-        self.term = try!(stream.read_le_uint());
+    fn decode(mut stream: &TcpStream) -> IoResult<AppendEntriesResponse> {
+        let term = try!(stream.read_le_uint());
         let b = try!(stream.read_byte());
-        self.success = (b == 1);
-        Ok(())
+        Ok(AppendEntriesResponse {
+            term: term,
+            success: (b == 1)
+        })
     }
 }
 
@@ -84,6 +88,15 @@ impl RpcRequest for RequestVoteRequest {
         };
         box ret as Box<RpcResponse>
     }
+    fn decode(mut stream: TcpStream) -> IoResult<RequestVoteRequest> {
+        let ret =  RequestVoteRequest {
+            term: try!(stream.read_le_uint()),
+            candidateId: try!(stream.read_le_uint()),
+            lastLogIndex: try!(stream.read_le_uint()),
+            lastLogTerm: try!(stream.read_le_uint())
+        };
+        return Ok(ret);
+    }
 }
 
 impl RpcRequest for AppendEntriesRequest {
@@ -94,43 +107,30 @@ impl RpcRequest for AppendEntriesRequest {
         };
         box ret as Box<RpcResponse>
     }
-}
-
-
-
-pub fn parseRequestVote(mut stream: TcpStream) -> IoResult<RequestVoteRequest> {
-    let ret =  RequestVoteRequest {
-        term: try!(stream.read_le_uint()),
-        candidateId: try!(stream.read_le_uint()),
-        lastLogIndex: try!(stream.read_le_uint()),
-        lastLogTerm: try!(stream.read_le_uint())
-    };
-    return Ok(ret);
-}
-
-pub fn parseAppendEntries(mut stream: TcpStream) -> IoResult<AppendEntriesRequest> {
-    let ret = AppendEntriesRequest {
-        term: try!(stream.read_le_uint()),
-        leaderId: try!(stream.read_le_uint()),
-        prevLogIndex: try!(stream.read_le_uint()),
-        prevLogTerm: try!(stream.read_le_uint()),
-        entries: {
-            let vec_length = try!(stream.read_le_uint());
-            let mut entries:Vec<Vec<u8>> = Vec::new();
-            // Perhaps this can be done simpler...
-            for entry in range(0, vec_length) {
-                let entry_length = try!(stream.read_le_uint());
-                let mut entry:Vec<u8> = Vec::new();
-                for c in range(0, entry_length) {
-                    entry.push(try!(stream.read_byte()));
+    fn decode(mut stream: TcpStream) -> IoResult<AppendEntriesRequest> {
+        let ret = AppendEntriesRequest {
+            term: try!(stream.read_le_uint()),
+            leaderId: try!(stream.read_le_uint()),
+            prevLogIndex: try!(stream.read_le_uint()),
+            prevLogTerm: try!(stream.read_le_uint()),
+            entries: {
+                let vec_length = try!(stream.read_le_uint());
+                let mut entries:Vec<Vec<u8>> = Vec::new();
+                // Perhaps this can be done simpler...
+                for entry in range(0, vec_length) {
+                    let entry_length = try!(stream.read_le_uint());
+                    let mut entry:Vec<u8> = Vec::new();
+                    for c in range(0, entry_length) {
+                        entry.push(try!(stream.read_byte()));
+                    }
+                    entries.push(entry)
                 }
-                entries.push(entry)
-            }
-            entries
-        },
-        leaderCommit: try!(stream.read_le_uint())
-    };
-    return Ok(ret);
+                entries
+            },
+            leaderCommit: try!(stream.read_le_uint())
+        };
+        return Ok(ret);
+    }
 }
 
 #[deriving(Clone)]
@@ -214,18 +214,16 @@ fn handle_client(mut stream: TcpStream, mut state: &ServerState, others:Vec<Serv
     //println!("Command {}", cmd);
 }
 
-
-
 fn read_rpc_command(mut stream: TcpStream) -> IoResult<Box<RpcRequest+'static>> {
     let input = stream.read_byte();
     static REQUEST_VOTE: u8 = '1' as u8;
     static APPEND_ENTRIES: u8 = '2' as u8;
     match input {
         Ok(REQUEST_VOTE) => {
-            return parseRequestVote(stream).map(|ret| { box ret as Box<RpcRequest> });
+            return RequestVoteRequest::decode(stream).map(|ret| { box ret as Box<RpcRequest> });
         }
         Ok(APPEND_ENTRIES) => {
-            return parseAppendEntries(stream).map(|ret| { box ret as Box<RpcRequest> });
+            return AppendEntriesRequest::decode(stream).map(|ret| { box ret as Box<RpcRequest> });
         }
         Ok(_) => {
             return Err(IoError {
