@@ -79,9 +79,15 @@ fn run_raft_server(mut state: &ServerState, me:ServerSpec, others:Vec<ServerSpec
         Err(e) => { println!("Error listening to {} ", me.port) }
         Ok(_) => {
             for stream in acceptor.incoming() {
-                match stream  {
+                match stream {
                     Err(e) => { println!("Error handling client connection!"); }
-                    Ok(mut tcpStream) => { handle_client(&mut tcpStream, state, others.clone()); }
+                    Ok(mut tcpStream) => {
+                        let status = handle_client(&mut tcpStream, state, others.clone());
+                        match status {
+                            Ok(_) => {}
+                            Err(msg) => { println!("Encountered error: {}", msg); }
+                        }
+                    }
                 }
             }
             drop(acceptor);
