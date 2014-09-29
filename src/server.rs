@@ -69,6 +69,9 @@ impl RpcResponse for AppendEntriesResponse {
         Ok(())
     }
     fn decode(&self, mut stream: &TcpStream) -> IoResult<()> {
+        self.term = try!(stream.read_le_uint());
+        let b = try!(stream.read_byte());
+        self.success = (b == 1);
         Ok(())
     }
 }
