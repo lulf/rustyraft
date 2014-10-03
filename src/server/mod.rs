@@ -28,15 +28,15 @@ enum State {
 }
 
 struct ServerState {
-    currentTerm: uint,
-    votedFor: Option<uint>,
+    current_term: uint,
+    voted_for: Option<uint>,
     log: Vec<Vec<u8>>,
 
-    commitIndex: uint,
-    lastApplied: uint,
+    commit_index: uint,
+    last_applied: uint,
 
-    nextIndex: Vec<uint>,
-    matchIndex: Vec<uint>,
+    next_index: Vec<uint>,
+    match_index: Vec<uint>,
     state: State,
 
     me: ServerSpec,
@@ -46,13 +46,13 @@ struct ServerState {
 impl ServerState {
     fn initial(me:ServerSpec, peers:Vec<ServerSpec>) -> ServerState {
         let mut ret = ServerState {
-            currentTerm: 0,
-            votedFor: None,
+            current_term: 0,
+            voted_for: None,
             log: Vec::new(),
-            commitIndex: 0,
-            lastApplied: 0,
-            nextIndex: Vec::new(),
-            matchIndex: Vec::new(),
+            commit_index: 0,
+            last_applied: 0,
+            next_index: Vec::new(),
+            match_index: Vec::new(),
             state: Follower,
             me: me,
             peers: peers
@@ -62,13 +62,13 @@ impl ServerState {
 }
 
 impl ServerState {
-    pub fn handleRequestVote(&self, request: RequestVoteRequest) -> RequestVoteResponse {
+    pub fn request_vote(&self, request: RequestVoteRequest) -> RequestVoteResponse {
         RequestVoteResponse {
             term: 0,
-            voteGranted: false
+            vote_granted: false
         }
     }
-    pub fn handleAppendEntries(&self, request: AppendEntriesRequest) -> AppendEntriesResponse {
+    pub fn append_entries(&self, request: AppendEntriesRequest) -> AppendEntriesResponse {
         AppendEntriesResponse {
             term: 0,
             success: false
@@ -76,10 +76,10 @@ impl ServerState {
     }
 }
 
-pub fn start_server(serverId:uint, servers:&Vec<ServerSpec>) {
+pub fn start_server(server_id:uint, servers:&Vec<ServerSpec>) {
     let mut others = servers.clone();
-    let mySpec = others.remove(serverId).unwrap();
-    let mut state = ServerState::initial(mySpec, others);
+    let my_spec = others.remove(server_id).unwrap();
+    let mut state = ServerState::initial(my_spec, others);
     spawn(proc() {
         run_raft_server(&state);
     });
@@ -94,8 +94,8 @@ fn run_raft_server(mut state: &ServerState) {
             for stream in acceptor.incoming() {
                 match stream {
                     Err(e) => { println!("Error handling client connection!"); }
-                    Ok(mut tcpStream) => {
-                        let status = handle_client(&mut tcpStream, state);
+                    Ok(mut tcp_stream) => {
+                        let status = handle_client(&mut tcp_stream, state);
                         match status {
                             Ok(_) => {}
                             Err(msg) => { println!("Encountered error: {}", msg); }
@@ -117,11 +117,11 @@ fn handle_client(stream: &mut TcpStream, mut state: &ServerState) -> IoResult<()
     match input {
         REQUEST_VOTE => {
             let request: RequestVoteRequest = try!(RpcRequest::decode(stream));
-            let response = state.handleRequestVote(request);
+            let response = state.request_vote(request);
         }
         APPEND_ENTRIES => {
             let request: AppendEntriesRequest = try!(RpcRequest::decode(stream));
-            let response = state.handleAppendEntries(request);
+            let response = state.append_entries(request);
         }
         n => {
             println!("Unknown command {}", n);

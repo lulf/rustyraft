@@ -3,23 +3,23 @@ use std::io::{IoResult};
 
 pub struct RequestVoteRequest {
     pub term: uint,
-    pub candidateId: uint,
-    pub lastLogIndex: uint,
-    pub lastLogTerm: uint
+    pub candidate_id: uint,
+    pub last_log_index: uint,
+    pub last_log_term: uint
 }
 
 pub struct AppendEntriesRequest {
     pub term: uint,
-    pub leaderId: uint,
-    pub prevLogIndex: uint,
-    pub prevLogTerm: uint,
+    pub leader_id: uint,
+    pub prev_log_index: uint,
+    pub prev_log_term: uint,
     pub entries: Vec<Vec<u8>>,
-    pub leaderCommit: uint
+    pub leader_commit: uint
 }
 
 pub struct RequestVoteResponse {
     pub term: uint,
-    pub voteGranted: bool
+    pub vote_granted: bool
 }
 
 pub struct AppendEntriesResponse {
@@ -35,9 +35,9 @@ impl RpcRequest for RequestVoteRequest {
     fn decode(stream: &mut TcpStream) -> IoResult<RequestVoteRequest> {
         let ret =  RequestVoteRequest {
             term: try!(stream.read_le_uint()),
-            candidateId: try!(stream.read_le_uint()),
-            lastLogIndex: try!(stream.read_le_uint()),
-            lastLogTerm: try!(stream.read_le_uint())
+            candidate_id: try!(stream.read_le_uint()),
+            last_log_index: try!(stream.read_le_uint()),
+            last_log_term: try!(stream.read_le_uint())
         };
         return Ok(ret);
     }
@@ -48,9 +48,9 @@ impl RpcRequest for AppendEntriesRequest {
     fn decode(stream: &mut TcpStream) -> IoResult<AppendEntriesRequest> {
         let ret = AppendEntriesRequest {
             term: try!(stream.read_le_uint()),
-            leaderId: try!(stream.read_le_uint()),
-            prevLogIndex: try!(stream.read_le_uint()),
-            prevLogTerm: try!(stream.read_le_uint()),
+            leader_id: try!(stream.read_le_uint()),
+            prev_log_index: try!(stream.read_le_uint()),
+            prev_log_term: try!(stream.read_le_uint()),
             entries: {
                 let vec_length = try!(stream.read_le_uint());
                 let mut entries:Vec<Vec<u8>> = Vec::new();
@@ -65,7 +65,7 @@ impl RpcRequest for AppendEntriesRequest {
                 }
                 entries
             },
-            leaderCommit: try!(stream.read_le_uint())
+            leader_commit: try!(stream.read_le_uint())
         };
         return Ok(ret);
     }
@@ -79,7 +79,7 @@ pub trait RpcResponse {
 impl RpcResponse for RequestVoteResponse {
     fn encode(&self, stream: &mut TcpStream) -> IoResult<()> {
         try!(stream.write_le_uint(self.term));
-        if (self.voteGranted) {
+        if (self.vote_granted) {
             try!(stream.write([1]));
         } else {
             try!(stream.write([0]));
@@ -91,7 +91,7 @@ impl RpcResponse for RequestVoteResponse {
         let b = try!(stream.read_byte());
         Ok(RequestVoteResponse {
             term: term,
-            voteGranted: (b == 1)})
+            vote_granted: (b == 1)})
     }
 }
 
