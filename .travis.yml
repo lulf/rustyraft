@@ -6,3 +6,5 @@ install:
   - sudo apt-get install -qq rust-nightly cargo
 script:
   - cargo build
+notifications:
+  email: false
