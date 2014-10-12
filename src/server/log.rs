@@ -1,10 +1,12 @@
 use std::io::{IoResult, IoError, IoErrorKind, InvalidInput};
+use std::collections::TreeMap;
 
 //pub trait Operation {
 //    fn apply() -> IoResult<()>;
 //    fn unapply() -> IoResult<()>;
 //}
 
+#[deriving(Clone,Show)]
 pub enum Operation {
     Put(uint, Vec<u8>),
     Delete(uint)
@@ -21,29 +23,42 @@ impl Operation {
 
 
 pub trait Log {
-    fn write(&self, term: uint, operation: Operation) -> IoResult<uint>;
+    fn write(&mut self, term: uint, operation: Operation) -> IoResult<uint>;
     fn read(&self, term: uint, index: uint) -> IoResult<Operation>;
     fn last_index(&self) -> IoResult<uint>;
     fn log_term(&self) -> IoResult<uint>;
 }
 
-pub struct MemoryLog;
+pub struct MemoryLog {
+    entries: Vec<LogEntry>
+}
 
 impl MemoryLog {
     pub fn new() -> MemoryLog {
-        MemoryLog
+        MemoryLog {
+            entries: Vec::new()
+        }
     }
 }
 
+struct LogEntry {
+    term: uint,
+    entry: Operation
+}
+
 impl Log for MemoryLog {
-    fn write(&self, term: uint, operation: Operation) -> IoResult<uint> {
-        Err(IoError{ kind: InvalidInput, desc: "Not yet implemented", detail: None})
+    fn write(&mut self, term: uint, operation: Operation) -> IoResult<uint> {
+        let idx = self.entries.len();
+        self.entries.push(LogEntry{term: term, entry: operation});
+        Ok(idx)
     }
     fn read(&self, term: uint, index: uint) -> IoResult<Operation> {
-        Err(IoError{ kind: InvalidInput, desc: "Not yet implemented", detail: None})
+        // TODO: What should we do with term?
+        let entry = &self.entries[index];
+        Ok(entry.entry.clone())
     }
     fn last_index(&self) -> IoResult<uint> {
-        Err(IoError{ kind: InvalidInput, desc: "Not yet implemented", detail: None})
+        Ok(self.entries.len() - 1)
     }
     fn log_term(&self) -> IoResult<uint> {
         Err(IoError{ kind: InvalidInput, desc: "Not yet implemented", detail: None})
@@ -52,7 +67,7 @@ impl Log for MemoryLog {
 
 #[test]
 fn test_that_put_operation_is_written_to_memory_log() {
-    let log = MemoryLog::new();
+    let mut log = MemoryLog::new();
     let data = vec![1, 2, 3];
     let result = log.write(1, Put(3, data));
     assert!(result.is_ok());
