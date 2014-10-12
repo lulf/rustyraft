@@ -6,8 +6,17 @@ use std::io::{IoResult, IoError, IoErrorKind, InvalidInput};
 //}
 
 pub enum Operation {
-    PUT(uint, Vec<u8>),
-    DELETE(uint)
+    Put(uint, Vec<u8>),
+    Delete(uint)
+}
+
+impl Operation {
+    fn get_key(&self) -> uint {
+        match *self {
+            Put(key, _) => key,
+            Delete(key) => key
+        }
+    }
 }
 
 
