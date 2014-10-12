@@ -48,17 +48,17 @@ struct LogEntry {
 
 impl Log for MemoryLog {
     fn write(&mut self, term: uint, operation: Operation) -> IoResult<uint> {
-        let idx = self.entries.len();
         self.entries.push(LogEntry{term: term, entry: operation});
-        Ok(idx)
+        Ok(self.entries.len())
     }
     fn read(&self, term: uint, index: uint) -> IoResult<Operation> {
         // TODO: What should we do with term?
-        let entry = &self.entries[index];
+        assert!(index > 0);
+        let entry = &self.entries[index - 1];
         Ok(entry.entry.clone())
     }
     fn last_index(&self) -> IoResult<uint> {
-        Ok(self.entries.len() - 1)
+        Ok(self.entries.len())
     }
     fn log_term(&self) -> IoResult<uint> {
         Err(IoError{ kind: InvalidInput, desc: "Not yet implemented", detail: None})
