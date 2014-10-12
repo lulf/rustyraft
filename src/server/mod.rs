@@ -112,8 +112,8 @@ fn run_raft_server(mut state: &ServerState) {
 
 fn handle_client(stream: &mut TcpStream, mut state: &ServerState) -> IoResult<()> {
     let input: u8 = try!(stream.read_byte());
-    static REQUEST_VOTE: u8 = '1' as u8;
-    static APPEND_ENTRIES: u8 = '2' as u8;
+    const REQUEST_VOTE: u8 = '1' as u8;
+    const APPEND_ENTRIES: u8 = '2' as u8;
     match input {
         REQUEST_VOTE => {
             let request: RequestVoteRequest = try!(RpcRequest::decode(stream));
