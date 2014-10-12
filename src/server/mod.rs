@@ -5,8 +5,10 @@ use std::io;
 use std::str;
 use std::ascii;
 use self::protocol::{RequestVoteRequest, AppendEntriesRequest, RequestVoteResponse, AppendEntriesResponse, RpcResponse, RpcRequest};
+use self::log::{Log, MemoryLog};
 
 mod protocol;
+mod log;
 
 #[deriving(Clone)]
 #[deriving(Show)]
@@ -30,7 +32,7 @@ enum State {
 struct ServerState {
     current_term: uint,
     voted_for: Option<uint>,
-    log: Vec<Vec<u8>>,
+    log: Box<Log+'static>,
 
     commit_index: uint,
     last_applied: uint,
@@ -48,7 +50,7 @@ impl ServerState {
         let mut ret = ServerState {
             current_term: 0,
             voted_for: None,
-            log: Vec::new(),
+            log: box MemoryLog::new(),
             commit_index: 0,
             last_applied: 0,
             next_index: Vec::new(),
@@ -59,16 +61,14 @@ impl ServerState {
         };
         ret
     }
-}
 
-impl ServerState {
-    pub fn request_vote(&self, request: RequestVoteRequest) -> RequestVoteResponse {
+    fn request_vote(&self, request: RequestVoteRequest) -> RequestVoteResponse {
         RequestVoteResponse {
             term: 0,
             vote_granted: false
         }
     }
-    pub fn append_entries(&self, request: AppendEntriesRequest) -> AppendEntriesResponse {
+    fn append_entries(&self, request: AppendEntriesRequest) -> AppendEntriesResponse {
         AppendEntriesResponse {
             term: 0,
             success: false
@@ -79,9 +79,9 @@ impl ServerState {
 pub fn start_server(server_id:uint, servers:&Vec<ServerSpec>) {
     let mut others = servers.clone();
     let my_spec = others.remove(server_id).unwrap();
-    let mut state = ServerState::initial(my_spec, others);
     spawn(proc() {
-        run_raft_server(&state);
+        let mut state = ServerState::initial(my_spec, others);
+        run_raft_server(&mut state);
     });
 }
 
