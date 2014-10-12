@@ -25,8 +25,8 @@ impl Operation {
 pub trait Log {
     fn write(&mut self, term: uint, operation: Operation) -> IoResult<uint>;
     fn read(&self, term: uint, index: uint) -> IoResult<Operation>;
-    fn last_index(&self) -> IoResult<uint>;
-    fn log_term(&self) -> IoResult<uint>;
+    fn last_log_index(&self) -> IoResult<uint>;
+    fn last_log_term(&self) -> IoResult<uint>;
 }
 
 pub struct MemoryLog {
@@ -57,10 +57,10 @@ impl Log for MemoryLog {
         let entry = &self.entries[index - 1];
         Ok(entry.entry.clone())
     }
-    fn last_index(&self) -> IoResult<uint> {
+    fn last_log_index(&self) -> IoResult<uint> {
         Ok(self.entries.len())
     }
-    fn log_term(&self) -> IoResult<uint> {
+    fn last_log_term(&self) -> IoResult<uint> {
         Err(IoError{ kind: InvalidInput, desc: "Not yet implemented", detail: None})
     }
 }
@@ -71,7 +71,7 @@ fn test_that_put_operation_is_written_to_memory_log() {
     let data = vec![1, 2, 3];
     let result = log.write(1, Put(3, data));
     assert!(result.is_ok());
-    let last_index = log.last_index();
+    let last_index = log.last_log_index();
     assert!(last_index.is_ok());
     let output = log.read(1, last_index.unwrap());
     assert!(output.is_ok());
