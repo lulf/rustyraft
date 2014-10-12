@@ -51,7 +51,7 @@ impl Log for MemoryLog {
 }
 
 #[test]
-fn test_that_operation_is_written() {
+fn test_that_put_operation_is_written_to_memory_log() {
     let log = MemoryLog::new();
     let data = vec![1, 2, 3];
     let result = log.write(1, Put(3, data));
