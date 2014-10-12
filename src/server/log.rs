@@ -23,8 +23,8 @@ impl Operation {
 
 
 pub trait Log {
-    fn write(&mut self, term: uint, operation: Operation) -> IoResult<uint>;
-    fn read(&self, term: uint, index: uint) -> IoResult<Operation>;
+    fn write(&mut self, entry: LogEntry) -> IoResult<uint>;
+    fn read(&self, index: uint) -> IoResult<LogEntry>;
     fn last_log_index(&self) -> IoResult<uint>;
     fn last_log_term(&self) -> IoResult<uint>;
 }
@@ -41,27 +41,39 @@ impl MemoryLog {
     }
 }
 
+#[deriving(Clone,Show)]
 struct LogEntry {
     term: uint,
-    entry: Operation
+    operation: Operation
+}
+
+impl LogEntry {
+    fn new(term: uint, operation: Operation) -> LogEntry {
+        LogEntry {
+            term: term,
+            operation: operation
+        }
+    }
 }
 
 impl Log for MemoryLog {
-    fn write(&mut self, term: uint, operation: Operation) -> IoResult<uint> {
-        self.entries.push(LogEntry{term: term, entry: operation});
+    fn write(&mut self, entry: LogEntry) -> IoResult<uint> {
+        self.entries.push(entry);
         Ok(self.entries.len())
     }
-    fn read(&self, term: uint, index: uint) -> IoResult<Operation> {
+    fn read(&self, index: uint) -> IoResult<LogEntry> {
         // TODO: What should we do with term?
         assert!(index > 0);
         let entry = &self.entries[index - 1];
-        Ok(entry.entry.clone())
+        Ok(entry.clone())
     }
     fn last_log_index(&self) -> IoResult<uint> {
         Ok(self.entries.len())
     }
     fn last_log_term(&self) -> IoResult<uint> {
-        Err(IoError{ kind: InvalidInput, desc: "Not yet implemented", detail: None})
+        let idx = try!(self.last_log_index());
+        let entry = try!(self.read(idx));
+        Ok(entry.term)
     }
 }
 
@@ -69,12 +81,16 @@ impl Log for MemoryLog {
 fn test_that_put_operation_is_written_to_memory_log() {
     let mut log = MemoryLog::new();
     let data = vec![1, 2, 3];
-    let result = log.write(1, Put(3, data));
+    let result = log.write(LogEntry::new(1, Put(3, data)));
     assert!(result.is_ok());
     let last_index = log.last_log_index();
     assert!(last_index.is_ok());
-    let output = log.read(1, last_index.unwrap());
+    let output = log.read(last_index.unwrap());
     assert!(output.is_ok());
-    let put = output.unwrap();
-    assert_eq!(3, put.get_key());
+    let entry = output.unwrap();
+    assert_eq!(3, entry.operation.get_key());
+    assert_eq!(1, entry.term);
+    let term = log.last_log_term();
+    assert!(term.is_ok());
+    assert_eq!(1, term.unwrap());
 }
