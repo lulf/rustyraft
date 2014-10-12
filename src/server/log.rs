@@ -50,4 +50,16 @@ impl Log for MemoryLog {
     }
 }
 
-
+#[test]
+fn test_that_operation_is_written() {
+    let log = MemoryLog::new();
+    let data = vec![1, 2, 3];
+    let result = log.write(1, Put(3, data));
+    assert!(result.is_ok());
+    let last_index = log.last_index();
+    assert!(last_index.is_ok());
+    let output = log.read(1, last_index.unwrap());
+    assert!(output.is_ok());
+    let put = output.unwrap();
+    assert_eq!(3, put.get_key());
+}
