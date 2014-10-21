@@ -6,6 +6,7 @@ use std::collections::TreeMap;
 //    fn unapply() -> IoResult<()>;
 //}
 
+// TODO: Find a way to generalize in order to support custom APIs
 #[deriving(Clone,Show)]
 pub enum Operation {
     Put(uint, Vec<u8>),
