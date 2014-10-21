@@ -12,7 +12,7 @@ mod server;
 fn main() {
     let args = os::args();
     if args.len() < 2 {
-        println!("Usage: {} <port...>", args.get(0));
+        println!("Usage: {} <port...>", args[0]);
         return;
     }
     let num_servers:uint = args.len() - 1;
