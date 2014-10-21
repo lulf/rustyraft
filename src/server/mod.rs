@@ -63,9 +63,17 @@ impl ServerState {
     }
 
     fn request_vote(&self, request: RequestVoteRequest) -> RequestVoteResponse {
+        let newer_term = request.term >= self.current_term;
+        let can_vote = match self.voted_for {
+                            Some(who) => who == request.candidate_id,
+                            None => true
+                       };
+        // TODO: Propagate errors
+        let last_local_log_index = self.log.last_log_index().unwrap();
+        let uptodate_log = request.last_log_index >= last_local_log_index;
         RequestVoteResponse {
-            term: 0,
-            vote_granted: false
+            term: self.current_term,
+            vote_granted: newer_term && can_vote && uptodate_log
         }
     }
     fn append_entries(&self, request: AppendEntriesRequest) -> AppendEntriesResponse {
