@@ -84,15 +84,19 @@ impl ServerState {
     }
 }
 
-#[test]
-fn test_that_vote_is_granted_when_not_voted_for() {
+fn create_test_state() -> ServerState {
     let foo  = ServerSpec::new("foo", 12345);
     let bar = ServerSpec::new("bar", 12345);
     let baz = ServerSpec::new("baz", 12345);
     let mut neighbours = Vec::new();
     neighbours.push(bar);
     neighbours.push(baz);
-    let mut state = ServerState::initial(foo, neighbours);
+    ServerState::initial(foo, neighbours)
+}
+
+#[test]
+fn test_that_vote_is_granted_when_not_voted_for() {
+    let mut state = create_test_state();
     let request = RequestVoteRequest {
         term: 1,
         candidate_id: 2,
@@ -102,6 +106,36 @@ fn test_that_vote_is_granted_when_not_voted_for() {
     let response = state.request_vote(request);
     assert_eq!(0, response.term);
     assert_eq!(true, response.vote_granted);
+}
+
+#[test]
+fn test_that_vote_is_granted_when_already_voted_for_candidate() {
+    let mut state = create_test_state();
+    state.voted_for = Some(2);
+    let request = RequestVoteRequest {
+        term: 1,
+        candidate_id: 2,
+        last_log_index: 2,
+        last_log_term: 1
+    };
+    let response = state.request_vote(request);
+    assert_eq!(0, response.term);
+    assert_eq!(true, response.vote_granted);
+}
+
+#[test]
+fn test_that_vote_is_turned_down_when_already_voted_for_someone_else() {
+    let mut state = create_test_state();
+    state.voted_for = Some(3);
+    let request = RequestVoteRequest {
+        term: 1,
+        candidate_id: 2,
+        last_log_index: 2,
+        last_log_term: 1
+    };
+    let response = state.request_vote(request);
+    assert_eq!(0, response.term);
+    assert_eq!(false, response.vote_granted);
 }
 
 pub fn start_server(server_id:uint, servers:&Vec<ServerSpec>) {
