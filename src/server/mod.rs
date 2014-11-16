@@ -149,7 +149,7 @@ pub fn start_server(server_id:uint, servers:&Vec<ServerSpec>) {
 
 fn run_raft_server(mut state: &ServerState) {
     let me = &state.me;
-    let mut acceptor = TcpListener::bind("127.0.0.1", me.port).listen();
+    let mut acceptor = TcpListener::bind(("127.0.0.1", me.port)).listen();
     match acceptor {
         Err(e) => { println!("Error listening to {} ", me.port) }
         Ok(_) => {
